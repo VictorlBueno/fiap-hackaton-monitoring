@@ -109,16 +109,21 @@ jobs:
         working-directory: terraform/grafana
         run: terraform plan -out=grafana.tfplan
 
-      - name: Salvar planos Terraform
+      - name: Salvar plano Prometheus
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plans
-          path: |
-            terraform/prometheus/prometheus.tfplan
-            terraform/grafana/grafana.tfplan
+          name: prometheus-tfplan
+          path: terraform/prometheus/prometheus.tfplan
           retention-days: 1
 
-  deployar:
+      - name: Salvar plano Grafana
+        uses: actions/upload-artifact@v4
+        with:
+          name: grafana-tfplan
+          path: terraform/grafana/grafana.tfplan
+          retention-days: 1
+
+  deploy:
     name: Aplicar Mudanças na Infraestrutura
     runs-on: ubuntu-latest
     needs: [validar, plano]
@@ -149,10 +154,17 @@ jobs:
         run: |
           aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Baixar planos Terraform
+      - name: Baixar plano Prometheus
         uses: actions/download-artifact@v4
         with:
-          name: terraform-plans
+          name: prometheus-tfplan
+          path: terraform/prometheus/
+
+      - name: Baixar plano Grafana
+        uses: actions/download-artifact@v4
+        with:
+          name: grafana-tfplan
+          path: terraform/grafana/
 
       - name: Inicializar Prometheus (reconfigure)
         working-directory: terraform/prometheus
@@ -192,17 +204,17 @@ jobs:
   notificar:
     name: Notificar Status do Deploy
     runs-on: ubuntu-latest
-    needs: deployar
+    needs: deploy
     if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
       - name: Notificar sucesso
-        if: needs.deployar.result == 'success'
+        if: needs.deploy.result == 'success'
         run: |
           echo "✅ Deploy do sistema de monitoramento concluído com sucesso!"
 
       - name: Notificar falha
-        if: needs.deployar.result == 'failure'
+        if: needs.deploy.result == 'failure'
         run: |
           echo "❌ Falha no deploy do sistema de monitoramento!"
           exit 1 
