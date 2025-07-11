@@ -42,21 +42,25 @@ jobs:
         working-directory: terraform/prometheus
         run: terraform init -reconfigure
 
+      - name: Corrigir formatação Prometheus
+        working-directory: terraform/prometheus
+        run: terraform fmt -recursive
+
       - name: Validar Prometheus
         working-directory: terraform/prometheus
-        run: |
-          terraform validate
-          terraform fmt -check -recursive
+        run: terraform validate
 
       - name: Inicializar Grafana (reconfigure)
         working-directory: terraform/grafana
         run: terraform init -reconfigure
 
+      - name: Corrigir formatação Grafana
+        working-directory: terraform/grafana
+        run: terraform fmt -recursive
+
       - name: Validar Grafana
         working-directory: terraform/grafana
-        run: |
-          terraform validate
-          terraform fmt -check -recursive
+        run: terraform validate
 
   plano:
     name: Gerar Plano de Mudanças

@@ -1,11 +1,11 @@
 terraform {
   backend "s3" {
-    bucket = "fiap-hack-terraform-state"
-    key    = "monitoring/prometheus/terraform.tfstate"
-    region = "us-east-1"
+    bucket  = "fiap-hack-terraform-state"
+    key     = "monitoring/prometheus/terraform.tfstate"
+    region  = "us-east-1"
     encrypt = true
   }
-  
+
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -60,9 +60,9 @@ resource "kubernetes_config_map" "prometheus_config" {
               targets = ["video-processor-service.video-processor.svc.cluster.local:80"]
             }
           ]
-          metrics_path = "/metrics"
+          metrics_path    = "/metrics"
           scrape_interval = "10s"
-          honor_labels = true
+          honor_labels    = true
         }
       ]
     })
@@ -115,16 +115,16 @@ resource "kubernetes_deployment" "prometheus" {
 
       spec {
         security_context {
-          fs_group = 65534
-          run_as_user = 65534
+          fs_group     = 65534
+          run_as_user  = 65534
           run_as_group = 65534
         }
 
         init_container {
-          name  = "init-prometheus-db"
-          image = "busybox:1.35"
+          name    = "init-prometheus-db"
+          image   = "busybox:1.35"
           command = ["sh", "-c", "chown -R 65534:65534 /prometheus && chmod -R 755 /prometheus"]
-          
+
           volume_mount {
             name       = "prometheus-storage"
             mount_path = "/prometheus"

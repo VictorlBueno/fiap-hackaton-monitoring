@@ -3,7 +3,7 @@ variable "prometheus_retention_days" {
   type        = number
   default     = 7
 }
- 
+
 variable "prometheus_storage_size" {
   description = "Tamanho do storage do Prometheus"
   type        = string

@@ -1,11 +1,11 @@
 terraform {
   backend "s3" {
-    bucket = "fiap-hack-terraform-state"
-    key    = "monitoring/grafana/terraform.tfstate"
-    region = "us-east-1"
+    bucket  = "fiap-hack-terraform-state"
+    key     = "monitoring/grafana/terraform.tfstate"
+    region  = "us-east-1"
     encrypt = true
   }
-  
+
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -68,10 +68,10 @@ resource "kubernetes_config_map" "grafana_datasources" {
       apiVersion = 1
       datasources = [
         {
-          name  = "Prometheus"
-          type  = "prometheus"
-          url   = "http://prometheus-service.monitoring.svc.cluster.local:9090"
-          access = "proxy"
+          name      = "Prometheus"
+          type      = "prometheus"
+          url       = "http://prometheus-service.monitoring.svc.cluster.local:9090"
+          access    = "proxy"
           isDefault = true
         }
       ]
@@ -125,25 +125,25 @@ resource "kubernetes_deployment" "grafana" {
 
       spec {
         security_context {
-          fs_group = 472
+          fs_group            = 472
           supplemental_groups = [472]
         }
-        
+
         init_container {
-          name  = "init-grafana-permissions"
-          image = "busybox:1.35"
+          name    = "init-grafana-permissions"
+          image   = "busybox:1.35"
           command = ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
-          
+
           volume_mount {
             name       = "grafana-storage"
             mount_path = "/var/lib/grafana"
           }
-          
+
           security_context {
             run_as_user = 0
           }
         }
-        
+
         container {
           name  = "grafana"
           image = "grafana/grafana:10.0.0"
@@ -151,9 +151,9 @@ resource "kubernetes_deployment" "grafana" {
           port {
             container_port = 3000
           }
-          
+
           security_context {
-            run_as_user = 472
+            run_as_user  = 472
             run_as_group = 472
           }
 
