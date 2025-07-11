@@ -1,4 +1,4 @@
-name: Deploy 
+name: Deploy Infraestrutura de Monitoramento
 
 on:
   push:
@@ -18,83 +18,93 @@ env:
   ENVIRONMENT: production
 
 jobs:
-  validate:
-    name: Validate Terraform
+  validar:
+    name: Validar Terraform
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
-      - name: Configure AWS credentials
+      - name: Configurar credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Validate Prometheus
+      - name: Inicializar Prometheus (reconfigure)
+        working-directory: terraform/prometheus
+        run: terraform init -reconfigure
+
+      - name: Validar Prometheus
         working-directory: terraform/prometheus
         run: |
-          terraform init
           terraform validate
           terraform fmt -check -recursive
 
-      - name: Validate Grafana
+      - name: Inicializar Grafana (reconfigure)
+        working-directory: terraform/grafana
+        run: terraform init -reconfigure
+
+      - name: Validar Grafana
         working-directory: terraform/grafana
         run: |
-          terraform init
           terraform validate
           terraform fmt -check -recursive
 
-  plan:
-    name: Plan Terraform Changes
+  plano:
+    name: Gerar Plano de Mudanças
     runs-on: ubuntu-latest
-    needs: validate
+    needs: validar
     
     steps:
-      - name: Checkout code
+      - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
-      - name: Configure AWS credentials
+      - name: Configurar credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup kubectl
+      - name: Instalar kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      - name: Configure kubectl for EKS
+      - name: Configurar kubectl para EKS
         run: |
           aws eks update-kubeconfig --name ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }} --region ${{ env.AWS_REGION }}
 
-      - name: Plan Prometheus
+      - name: Inicializar Prometheus (reconfigure)
         working-directory: terraform/prometheus
-        run: |
-          terraform init
-          terraform plan -out=prometheus.tfplan
+        run: terraform init -reconfigure
 
-      - name: Plan Grafana
+      - name: Plano Prometheus
+        working-directory: terraform/prometheus
+        run: terraform plan -out=prometheus.tfplan
+
+      - name: Inicializar Grafana (reconfigure)
         working-directory: terraform/grafana
-        run: |
-          terraform init
-          terraform plan -out=grafana.tfplan
+        run: terraform init -reconfigure
 
-      - name: Upload Terraform plans
+      - name: Plano Grafana
+        working-directory: terraform/grafana
+        run: terraform plan -out=grafana.tfplan
+
+      - name: Salvar planos Terraform
         uses: actions/upload-artifact@v4
         with:
           name: terraform-plans
@@ -103,88 +113,91 @@ jobs:
             terraform/grafana/grafana.tfplan
           retention-days: 1
 
-  deploy:
-    name: Deploy Infrastructure
+  deployar:
+    name: Aplicar Mudanças na Infraestrutura
     runs-on: ubuntu-latest
-    needs: [validate, plan]
+    needs: [validar, plano]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-      - name: Checkout code
+      - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
-      - name: Configure AWS credentials
+      - name: Configurar credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup kubectl
+      - name: Instalar kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      - name: Configure kubectl for EKS
+      - name: Configurar kubectl para EKS
         run: |
           aws eks update-kubeconfig --name ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }} --region ${{ env.AWS_REGION }}
 
-      - name: Download Terraform plans
+      - name: Baixar planos Terraform
         uses: actions/download-artifact@v4
         with:
           name: terraform-plans
 
-      - name: Apply Prometheus
+      - name: Inicializar Prometheus (reconfigure)
         working-directory: terraform/prometheus
-        run: |
-          terraform init
-          terraform apply -auto-approve prometheus.tfplan
+        run: terraform init -reconfigure
 
-      - name: Apply Grafana
+      - name: Aplicar Prometheus
+        working-directory: terraform/prometheus
+        run: terraform apply -auto-approve prometheus.tfplan
+
+      - name: Inicializar Grafana (reconfigure)
         working-directory: terraform/grafana
-        run: |
-          terraform init
-          terraform apply -auto-approve grafana.tfplan
+        run: terraform init -reconfigure
 
-      - name: Wait for deployments
+      - name: Aplicar Grafana
+        working-directory: terraform/grafana
+        run: terraform apply -auto-approve grafana.tfplan
+
+      - name: Aguardar deployments
         run: |
           kubectl wait --for=condition=available --timeout=300s deployment/prometheus -n monitoring
           kubectl wait --for=condition=available --timeout=300s deployment/grafana -n monitoring
 
-      - name: Get Grafana URL
+      - name: Obter URL do Grafana
         run: |
-          echo "Grafana URL:"
+          echo "URL do Grafana:" 
           kubectl get svc grafana-service -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "LoadBalancer ainda não está pronto"
           echo ""
           echo "Credenciais: admin/admin123"
 
-      - name: Test connectivity
+      - name: Testar conectividade
         run: |
-          echo "Testing Prometheus connectivity..."
+          echo "Testando Prometheus..."
           kubectl exec -n monitoring deployment/prometheus -- wget -qO- http://localhost:9090/-/healthy || echo "Prometheus health check failed"
-          
-          echo "Testing Grafana connectivity..."
+          echo "Testando Grafana..."
           kubectl exec -n monitoring deployment/grafana -- wget -qO- http://localhost:3000/api/health || echo "Grafana health check failed"
 
-  notify:
-    name: Notify Deployment Status
+  notificar:
+    name: Notificar Status do Deploy
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: deployar
     if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-      - name: Notify success
-        if: needs.deploy.result == 'success'
+      - name: Notificar sucesso
+        if: needs.deployar.result == 'success'
         run: |
           echo "✅ Deploy do sistema de monitoramento concluído com sucesso!"
 
-      - name: Notify failure
-        if: needs.deploy.result == 'failure'
+      - name: Notificar falha
+        if: needs.deployar.result == 'failure'
         run: |
           echo "❌ Falha no deploy do sistema de monitoramento!"
           exit 1 
