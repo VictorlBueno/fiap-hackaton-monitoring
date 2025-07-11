@@ -3,6 +3,7 @@ terraform {
     bucket = "fiap-hack-terraform-state"
     key    = "monitoring/terraform.tfstate"
     region = "us-east-1"
+    encrypt = true
   }
   
   required_providers {
