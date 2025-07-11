@@ -116,7 +116,7 @@ jobs:
           path: |
             terraform/prometheus/prometheus.tfplan
             terraform/grafana/grafana.tfplan
-        # retention-days: 1 (removido pois não é suportado)
+          retention-days: 1
 
   deployar:
     name: Aplicar Mudanças na Infraestrutura
@@ -154,11 +154,6 @@ jobs:
         with:
           name: terraform-plans
 
-      - name: Mover plano Prometheus para o diretório correto
-        run: |
-          mkdir -p terraform/prometheus
-          mv prometheus.tfplan terraform/prometheus/prometheus.tfplan || true
-
       - name: Inicializar Prometheus (reconfigure)
         working-directory: terraform/prometheus
         run: terraform init -reconfigure
@@ -166,11 +161,6 @@ jobs:
       - name: Aplicar Prometheus
         working-directory: terraform/prometheus
         run: terraform apply -auto-approve prometheus.tfplan
-
-      - name: Mover plano Grafana para o diretório correto
-        run: |
-          mkdir -p terraform/grafana
-          mv grafana.tfplan terraform/grafana/grafana.tfplan || true
 
       - name: Inicializar Grafana (reconfigure)
         working-directory: terraform/grafana
