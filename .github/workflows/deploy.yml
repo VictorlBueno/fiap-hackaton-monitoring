@@ -16,6 +16,7 @@ env:
   BUCKET_NAME: fiap-hack-terraform-state
   PROJECT_NAME: fiap-hack
   ENVIRONMENT: production
+  EKS_CLUSTER_NAME: fiap-hack-cluster
 
 jobs:
   validar:
@@ -90,7 +91,7 @@ jobs:
 
       - name: Configurar kubectl para EKS
         run: |
-          aws eks update-kubeconfig --name ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }} --region ${{ env.AWS_REGION }}
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       - name: Inicializar Prometheus (reconfigure)
         working-directory: terraform/prometheus
@@ -146,7 +147,7 @@ jobs:
 
       - name: Configurar kubectl para EKS
         run: |
-          aws eks update-kubeconfig --name ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }} --region ${{ env.AWS_REGION }}
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       - name: Baixar planos Terraform
         uses: actions/download-artifact@v4
