@@ -136,10 +136,6 @@ restore-state: ## Restaura estados Terraform de um backup
 	aws s3 cp $(BACKUP_DIR)/grafana.tfstate s3://$(BUCKET_NAME)/monitoring/grafana/terraform.tfstate --region $(AWS_REGION)
 	@echo "✅ Restauração concluída!"
 
-list-backups: ## Lista backups disponíveis
-	@echo "📋 Backups disponíveis:"
-	@ls -la backups/ 2>/dev/null || echo "Nenhum backup encontrado"
-
 destroy-all: ## Destroi todo o sistema de monitoramento
 	@echo "⚠️  ATENÇÃO: Isso irá destruir todo o sistema de monitoramento!"
 	@read -p "Confirma a destruição? (digite 'sim' para confirmar): " confirm; \
